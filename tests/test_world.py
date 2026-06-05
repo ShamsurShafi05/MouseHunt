@@ -111,3 +111,68 @@ class TestEatFood:
             eat_food()
         out = capsys.readouterr().out
         assert "invalid" in out.lower()
+
+
+class TestTravelEventDamage:
+    def test_no_damage_when_roll_above_threshold(self, reset_state):
+        reset_state.player_health = 100
+        with patch("game.world.random.random", return_value=0.99):   # > 0.40 → no event
+            from game.world import travel_event_damage
+            travel_event_damage()
+        assert reset_state.player_health == 100
+
+    def test_damage_applied_when_roll_below_threshold(self, reset_state):
+        reset_state.player_health = 100
+        with patch("game.world.random.random", return_value=0.10), \
+             patch("game.world.random.choice", return_value=("Ouch!", 1)), \
+             patch("game.world.random.randint", return_value=2):
+            from game.world import travel_event_damage
+            travel_event_damage()
+        assert reset_state.player_health == 98
+
+    def test_health_cannot_go_below_zero_from_travel(self, reset_state):
+        reset_state.player_health = 1
+        with patch("game.world.random.random", return_value=0.10), \
+             patch("game.world.random.choice", return_value=("Ouch!", 1)), \
+             patch("game.world.random.randint", return_value=4):
+            from game.world import travel_event_damage
+            travel_event_damage()
+        assert reset_state.player_health == 0
+
+    def test_damage_message_printed(self, reset_state, capsys):
+        reset_state.player_health = 100
+        with patch("game.world.random.random", return_value=0.10), \
+             patch("game.world.random.choice", return_value=("Sharp rock!", 1)), \
+             patch("game.world.random.randint", return_value=1):
+            from game.world import travel_event_damage
+            travel_event_damage()
+        out = capsys.readouterr().out
+        assert "sharp rock" in out.lower() or "hp" in out.lower()
+
+
+class TestScavenge:
+    def test_scavenge_drains_energy(self, reset_state):
+        reset_state.player_energy = 100
+        from constants import ENERGY_SCAVENGE_COST
+        with patch("game.world.random.random", return_value=0.99), \
+             patch("game.world.random.randint", return_value=0), \
+             patch("game.world.random.choice", return_value="apple"):
+            from game.world import scavenge
+            scavenge()
+        assert reset_state.player_energy < 100
+
+    def test_scavenge_drains_hunger(self, reset_state):
+        reset_state.player_hunger = 100
+        with patch("game.world.random.random", return_value=0.99), \
+             patch("game.world.random.randint", return_value=0), \
+             patch("game.world.random.choice", return_value="apple"):
+            from game.world import scavenge
+            scavenge()
+        assert reset_state.player_hunger < 100
+
+    def test_scavenge_blocked_when_no_energy(self, reset_state, capsys):
+        reset_state.player_energy = 0
+        from game.world import scavenge
+        scavenge()
+        out = capsys.readouterr().out
+        assert "exhaust" in out.lower() or "tired" in out.lower() or "rest" in out.lower()

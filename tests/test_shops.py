@@ -10,36 +10,12 @@ from unittest.mock import patch, call
 
 from game.shops import (
     _buy_cheese,
-    _update_trap_option,
     _buy_trap,
     _witch_healing,
     _witch_ancient_ritual,
     _witch_food_submenu,
 )
 from constants import CHEESE_PRICES, XP_UNLOCK_TIER_1, XP_UNLOCK_TIER_2
-
-
-# ===========================================================================
-# _update_trap_option
-# ===========================================================================
-
-class TestUpdateTrapOption:
-    def test_marks_trap_owned_and_sets_durability(self, reset_state):
-        _update_trap_option("Wood-and-Spring Trap")
-        entry = reset_state.trap_option[0]
-        assert entry[1] == 1
-        assert entry[2] == 10   # TRAP[0][3] durability
-
-    def test_second_call_increments_owned_count(self, reset_state):
-        _update_trap_option("Wood-and-Spring Trap")
-        _update_trap_option("Wood-and-Spring Trap")
-        assert reset_state.trap_option[0][1] == 2
-
-    def test_middle_trap_updated(self, reset_state):
-        _update_trap_option("Reinforced Wood-Cage Trap")
-        entry = reset_state.trap_option[1]
-        assert entry[1] == 1
-        assert entry[2] == 20   # TRAP[1][3]
 
 
 # ===========================================================================

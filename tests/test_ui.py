@@ -132,3 +132,63 @@ class TestShowProTips:
         show_pro_tips()
         out = capsys.readouterr().out
         assert "pro" in out.lower()   # "Looking like a pro…"
+
+
+class TestCheckHealthBoundaries:
+    def test_health_at_1_returns_true(self, reset_state):
+        reset_state.player_health = 1
+        assert check_health() is True
+
+    def test_health_at_10_no_warning(self, reset_state, capsys):
+        """Boundary: warning only below 10, not at 10."""
+        reset_state.player_health = 10
+        check_health()
+        out = capsys.readouterr().out
+        assert "attention" not in out.lower()
+
+    def test_health_at_9_prints_warning(self, reset_state, capsys):
+        reset_state.player_health = 9
+        check_health()
+        out = capsys.readouterr().out
+        assert "attention" in out.lower()
+
+
+class TestCheckEnergyBoundaries:
+    def test_energy_at_1_returns_true(self, reset_state):
+        reset_state.player_energy = 1
+        assert check_energy() is True
+
+    def test_energy_at_21_no_warning(self, reset_state, capsys):
+        """Boundary: warning only at 20 or below."""
+        reset_state.player_energy = 21
+        check_energy()
+        out = capsys.readouterr().out
+        assert "critically low" not in out.lower()
+
+    def test_energy_at_20_prints_warning(self, reset_state, capsys):
+        reset_state.player_energy = 20
+        check_energy()
+        out = capsys.readouterr().out
+        assert "energy" in out.lower()
+
+
+class TestCheckGameOverEdgeCases:
+    def test_low_gold_multiple_cheese_survives(self, reset_state):
+        """Low gold with 2+ cheese should not trigger the 'last cheese' message."""
+        reset_state.gold = 5
+        reset_state.player_health = 100
+        reset_state.player_hunger = 100
+        reset_state.cheese[0][1] = 3
+        assert check_game_over() is False
+
+    def test_health_1_still_alive(self, reset_state):
+        reset_state.player_health = 1
+        reset_state.player_hunger = 100
+        reset_state.gold = 100
+        assert check_game_over() is False
+
+    def test_hunger_1_still_alive(self, reset_state):
+        reset_state.player_health = 100
+        reset_state.player_hunger = 1
+        reset_state.gold = 100
+        assert check_game_over() is False

@@ -213,3 +213,69 @@ class TestCrateUpgrade:
         reset_state.gold   = 200
         crate.upgrade()
         assert crate.tier_index == 1
+
+
+class TestCrateDisplay:
+    def test_display_prints_tier_name(self, capsys):
+        c = Crate()
+        c.display()
+        out = capsys.readouterr().out
+        assert "Basic Crate" in out
+
+    def test_display_shows_size_and_capacity(self, capsys):
+        c = Crate()
+        c.add(_mouse("Brown"))
+        c.display()
+        out = capsys.readouterr().out
+        assert "1/5" in out
+
+    def test_display_empty_crate_says_empty(self, capsys):
+        c = Crate()
+        c.display()
+        out = capsys.readouterr().out
+        assert "empty" in out.lower()
+
+    def test_display_lists_mouse_names(self, capsys):
+        c = Crate()
+        c.add(_mouse("Tiny"))
+        c.display()
+        out = capsys.readouterr().out
+        assert "Tiny" in out
+
+
+class TestCrateQueueIntegrity:
+    def test_add_then_remove_restores_empty(self):
+        c = Crate()
+        c.add(_mouse("Grey"))
+        c.remove()
+        assert c.size() == 0
+        assert not c.is_full()
+
+    def test_fifo_order_three_mice(self):
+        c = Crate()
+        m1, m2, m3 = _mouse("Brown"), _mouse("Grey"), _mouse("White")
+        c.add(m1); c.add(m2); c.add(m3)
+        assert c.remove() is m1
+        assert c.remove() is m2
+        assert c.remove() is m3
+
+    def test_contents_reflects_remaining_after_remove(self):
+        c = Crate()
+        c.add(_mouse("Tiny"))
+        c.add(_mouse("White"))
+        c.remove()
+        assert c.contents() == ["White"]
+
+
+class TestAnimalMessages:
+    def test_tiger_attack_prints_message(self, reset_state, capsys):
+        reset_state.player_health = 100
+        Animal("tiger").attack()
+        out = capsys.readouterr().out
+        assert "tiger" in out.lower()
+
+    def test_boar_attack_prints_message(self, reset_state, capsys):
+        reset_state.player_health = 100
+        Animal("wild boar").attack()
+        out = capsys.readouterr().out
+        assert "boar" in out.lower() or "wild" in out.lower()
