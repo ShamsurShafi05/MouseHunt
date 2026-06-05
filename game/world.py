@@ -18,6 +18,7 @@ from constants import (
 )
 from models.animal import Animal
 from art.ascii_art import show_description
+from constants import TRAVEL_EVENTS
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +48,16 @@ _FOOD_OPTIONS = ["apple", "banana", "berries", "mushrooms", "frog"]
 # Scavenge
 # ---------------------------------------------------------------------------
 
+def travel_event_damage() -> None:
+    if random.random() > 0.40:
+        return
+    msg, _ = random.choice(TRAVEL_EVENTS)   # base damage ignored — difficulty range used
+    lo, hi = state.diff("travel_damage_range")
+    damage = random.randint(lo, hi)
+    state.player_health = max(0, state.player_health - damage)
+    print(f"\n{msg} (-{damage} HP)\n")
+    time.sleep(1)
+
 def scavenge() -> None:
     from game.ui import check_energy, check_game_over
 
@@ -59,29 +70,34 @@ def scavenge() -> None:
     if not check_energy():
         return
 
-    state.drain_energy(ENERGY_SCAVENGE_COST)
-    state.drain_hunger(HUNGER_DRAIN_SCAVENGE)
+    # state.drain_energy(ENERGY_SCAVENGE_COST)
+    # state.drain_hunger(HUNGER_DRAIN_SCAVENGE)
+
+    state.drain_energy(ENERGY_SCAVENGE_COST + state.diff("energy_drain_bonus"))
+    state.drain_hunger(HUNGER_DRAIN_SCAVENGE + state.diff("hunger_drain_bonus"))
 
     # Animal risk scales with time of day
     if state.is_daytime():
-        risk1, risk2 = 0.1, 0.2
+        risk1, risk2 = state.diff("animal_risk_day")
     else:
-        risk1, risk2 = 0.5, 0.6
+        risk1, risk2 = state.diff("animal_risk_night")
 
-    # Scavenge outcome
+    # Scavenge outcome — success rate scales with difficulty
+    success_rate = state.diff("scavenge_success_rate")
+    half_rate    = success_rate / 2
     event_roll   = random.random()
-    random_index = random.randint(0, len(_SUCCESS_MESSAGES) - 1)
+    random_index = random.randint(0, len(_SUCCESS_MESSAGES) - 1)   # ← add this line
 
-    if event_roll < 0.25:
+    if event_roll < half_rate:
         wood_found = random_index + 1
         state.wood += wood_found
         msg = _SUCCESS_MESSAGES[random_index]
-    elif event_roll < 0.50:
-        msg = _FAIL_MESSAGES[random_index]
-    elif event_roll < 0.75:
+    elif event_roll < success_rate:
         food_found = random.choice(_FOOD_OPTIONS)
         state.food[food_found] += 1
         msg = f"You scavenge the forest and discover a {food_found}. Might come in handy!"
+    elif event_roll < success_rate + 0.15:
+        msg = _FAIL_MESSAGES[random_index]
     else:
         msg = "Despite your efforts, the forest floor yields nothing today."
 

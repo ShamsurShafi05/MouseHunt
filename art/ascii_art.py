@@ -56,13 +56,26 @@ def field_mouse() -> str:
 
     """
 
-def poison_mouse() -> str:
+def poison_mouse() -> str:          # kept bc previous test-cases use it 
     return r"""
          (\_/)
         ( x.x )  Poison Mouse
         (  :  )
        /  ~~~  \
       ( *dead* )
+    """
+
+def mouse_king() -> str:
+    return r"""
+          /\  /\
+         ( crown )
+       ╔═══════════╗
+       ║ ◄ KING ►  ║
+       ║  (x . x)  ║   <<< THE MOUSE KING >>>
+       ║  ( ::: )  ║
+       ║ /|     |\ ║
+       ╚═══════════╝
+         dark lord
     """
 
 

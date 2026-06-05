@@ -6,7 +6,7 @@ Both functions write to state directly — no parameters, no return values.
 """
 
 from state import state
-from constants import START_GOLD
+# from constants import START_GOLD
 
 
 # ---------------------------------------------------------------------------
@@ -71,13 +71,12 @@ def setup_name() -> None:
 # ---------------------------------------------------------------------------
 
 def setup_difficulty() -> None:
-    """Prompt for difficulty and set starting gold in state."""
+    """Prompt for difficulty and set starting gold + difficulty index in state."""
     while True:
         difficulty = input(
             "\nChoose game difficulty:\n"
             "1. Noob\n"
-            "2. Adventurer\n"
-            "3. Survivalist\n"
+            "2. Survivalist\n"
         ).strip()
 
         if not difficulty.isdigit():
@@ -85,16 +84,17 @@ def setup_difficulty() -> None:
             continue
 
         choice = int(difficulty)
-        if choice < 1 or choice > 3:
+        if choice < 1 or choice > 2:
             print("Invalid option.\n")
             continue
 
         if choice == 1:
-            print("Oh my.. with such little nerve, you might not come out alive from what awaits you..")
-        elif choice == 2:
-            print("A rational thinker, I see. Too scared to risk it, are we..")
+            print("\nOh my.. with such little nerve, you might not be able to come out alive from what awaits you ahead..\n")
+            state.difficulty = 0
         else:
-            print("Daring, are we? We all sometimes live to regret the decisions we make. Will you too..")
+            print("\nDaring, are we? We all sometimes live to regret the decisions we make. Will you too..\n")
+            state.difficulty = 1
 
-        state.gold += START_GOLD[choice - 1]
+        from constants import DIFFICULTY
+        state.gold += DIFFICULTY["start_gold"][state.difficulty]
         break

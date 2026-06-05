@@ -73,8 +73,11 @@ class GameState:
         # ---------------------------------------------------------------
         self.name:             str  = "Hunter"
         self.carpenter_visit:  int  = 0
+        self.trader_visited: bool = False
         self.game_over:       bool  = False
+        self.mouse_king_caught: bool = False
         self.start_time:     float  = time.time()
+        self.difficulty: int = 0   # 0 = Noob, 1 = Survivalist
         self.minutes_spent:  float  = 0.0
 
         self.attempts: dict = {
@@ -143,6 +146,19 @@ class GameState:
 
     def count_cheese(self) -> int:
         return sum(qty for _, qty in self.cheese)
+    
+
+# -------------------------------------------------------------------
+# Difficulty helper  (single lookup point for all difficulty values)
+# -------------------------------------------------------------------
+
+    def diff(self, key: str):
+        """
+        Return the difficulty-scaled value for `key` from DIFFICULTY dict.
+        Always use this instead of indexing DIFFICULTY[key][n] directly.
+        """
+        from constants import DIFFICULTY
+        return DIFFICULTY[key][self.difficulty]
 
 
 # ---------------------------------------------------------------------------

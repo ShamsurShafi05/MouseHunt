@@ -68,7 +68,9 @@ def _buy_cheese() -> None:
             print("Cheese Dealer: You need.. a negative amount of cheese, huh?")
             continue
 
-        unit_price = CHEESE_PRICES[cheese]
+        # unit_price = CHEESE_PRICES[cheese]
+        base_price = CHEESE_PRICES[cheese]
+        unit_price = int(base_price * state.diff("cheese_price_mult"))
         total_cost = qty * unit_price
 
         if total_cost > state.gold:
@@ -122,12 +124,12 @@ def visit_cheese_shop() -> None:
 # Old Carpenter
 # ---------------------------------------------------------------------------
 
-def _update_trap_option(trap_name: str) -> None:
-    """Mark a trap as owned and reset its durability from the TRAP menu."""
-    for i, entry in enumerate(state.trap_option):
-        if entry[0] == trap_name:
-            entry[1] += 1
-            entry[2] = TRAP[i][3]   # durability from constants
+# def _update_trap_option(trap_name: str) -> None:
+#     """Mark a trap as owned and reset its durability from the TRAP menu."""
+#     for i, entry in enumerate(state.trap_option):
+#         if entry[0] == trap_name:
+#             entry[1] += 1
+#             entry[2] = TRAP[i][3]   # durability from constants
 
 
 def _buy_trap() -> None:
@@ -170,26 +172,40 @@ def _buy_trap() -> None:
             print(f"Old Carpenter: Your {trap_entry[0]} is still in fine shape! Come back when it's broken!\n")
             continue
 
-        if state.wood < trap_data[1]:
+        wood_cost  = trap_data[1]
+        gold_cost  = int(trap_data[2] * state.diff("trap_price_mult"))
+        durability = int(trap_data[3] * state.diff("trap_durability_mult"))
+        durability = max(1, durability)
+
+        if state.wood < wood_cost:
             print("Old Carpenter: You didn't bring enough wood.\n")
             continue
 
-        if state.gold < trap_data[2]:
+        if state.gold < gold_cost:
             print("Old Carpenter: You don't seem to have enough gold, kid.\n")
             continue
 
         trap_name = trap_data[0]
-        state.wood -= trap_data[1]
-        state.gold -= trap_data[2]
-        _update_trap_option(trap_name)
+        state.wood -= wood_cost
+        state.gold -= gold_cost
+        # Apply difficulty-scaled durability
+        for i, entry in enumerate(state.trap_option):
+            if entry[0] == trap_name:
+                entry[1] += 1
+                entry[2] = durability
         state.points += 10
 
         print(
             f"\nOld Carpenter: I can make a {trap_name} for you, no problem! "
-            f"It will last you {trap_data[3]} hunts."
+            f"It will last you {durability} hunts."
         )
         print("You earned 10 XP!\n")
-
+        if choice == 3:
+            print("Old Carpenter: *pauses, lowers voice*")
+            time.sleep(1)
+            print("Old Carpenter: That's the one they say can hold the King himself...")
+            time.sleep(2)
+        continue   # back to top of while loop
 
 def _display_inventory() -> None:
     character_art(state.name)
@@ -207,10 +223,12 @@ def visit_carpenter() -> None:
     if state.carpenter_visit == 0:
         # First visit — free starter trap and crate
         msg = (
-            "Old Carpenter:\nI thought I heard some noise last night. "
-            "But there's just been so much noise lately, innit?\n"
-            "Anyways, sorry I can't let you stay here if that's what ya're here for, mate-\n"
-            "If you got some wood, I might be able to get you something to help you survive better on your own\n"
+            "Old Carpenter:\nI thought I heard some scurrying last night. "
+            "A strange chittering, like whispers in the dark.\n"
+            "Anyways, sorry I can't let you stay here if that's what ya're here for-\n\n"
+            "If you got some wood, I might be able to get you something "
+            "to help you survive better on your own.\n"
+            "Might come in handy when the Mouse King's minions are lurking.\n"
         )
         show_description(msg)
         input("Press Enter to give wooden crate...")
@@ -224,7 +242,8 @@ def visit_carpenter() -> None:
 
         print("\nYOU GOT WOOD-AND-SPRING TRAP!\n")
         state.trap_option[0][1] += 1
-        state.trap_option[0][2] = 10
+        # state.trap_option[0][2] = 10
+        state.trap_option[0][2] = max(1, int(10 * state.diff("trap_durability_mult")))
 
         state.crate = Crate()
         print("\nYOU ALSO GOT A BASIC CRATE! (holds 5 mice)\n")
@@ -272,12 +291,6 @@ def visit_carpenter() -> None:
 # ---------------------------------------------------------------------------
 
 def visit_trader() -> None:
-    print("Travelling to the Trader...\n")
-    time.sleep(3)
-    state.increase_time(3)
-    state.drain_energy(ENERGY_TRAVEL_COST)
-    state.drain_hunger(HUNGER_DRAIN_TRAVEL)
-
     if state.crate is None or state.crate.size() == 0:
         print("Trader: *swings door open*")
         time.sleep(1)
@@ -297,8 +310,43 @@ def visit_trader() -> None:
 
     print(f"Trader: Ohoho, welcome welcome, Hunter {state.name}!")
     time.sleep(1)
-    print("Trader: I don't ask where they come from... and you don't ask where they go. Heheheh.")
-    time.sleep(2)
+    if not state.trader_visited:
+        time.sleep(1)
+        print("Trader: Before we do business... there's something you should know.")
+        time.sleep(2)
+        print("Trader: That wretched beast — the Mouse King — he took my boy.")
+        time.sleep(2)
+        print("Trader: He was just a lad. Thought he could slay the King himself.")
+        time.sleep(2)
+        print("Trader: They found his trap shattered. Blood on the ground.")
+        time.sleep(1)
+        print("Trader: No sign of him. Only those cursed claw marks leading into the dark..")
+        time.sleep(3)
+        print("Trader: So I put a price on the Mouse King's head.")
+        time.sleep(1)
+        print("Trader: Bring it to me — and you'll be richer than any hunter here.")
+        time.sleep(2)
+        print("\nTrader: My boy left behind some notes. Press Enter to read them.")
+        input()
+        print("---------------------- Experiment 821 --------------------------")
+        print("                      `````````````````")
+        print("To catch the Mouse King, you must use BOTH:")
+        print("")
+        print("1. Swiss Cheese")
+        print("2. A Multilayer Glued-Board Trap")
+        print("")
+        print("Conclusion: Without both, the King will never fall. Be prepared.")
+        print("------------------------------------------------------------------\n")
+        time.sleep(2)
+        state.trader_visited = True
+    else:
+        # Return visits — brief reminder if XP is high
+        if state.points >= 300:
+            # time.sleep(1)
+            print("Trader: *looks you over* You're getting closer, I can feel it.")
+            time.sleep(1)
+            print("Trader: Swiss cheese. Multilayer trap. Don't forget.")
+            time.sleep(2)
 
     while True:
         print(f"\nYour gold: {state.gold}")
@@ -360,10 +408,6 @@ def visit_trader() -> None:
             time.sleep(2)
             break
 
-    print("\nReturning...\n")
-    time.sleep(3)
-    state.increase_time(3)
-
 
 # ---------------------------------------------------------------------------
 # Witch Doctor
@@ -377,11 +421,11 @@ _FOOD_PRICES = {
     5: ("frog",      3),
 }
 
-_HEALING = {
-    1: (25,  50,  "Herbal Wrap"),
-    2: (50,  90,  "Bone Brew"),
-    3: (100, 150, "Full Revival"),
-}
+# _HEALING = {
+#     1: (25,  50,  "Herbal Wrap"),
+#     2: (50,  90,  "Bone Brew"),
+#     3: (100, 150, "Full Revival"),
+# }
 
 
 def _witch_food_submenu() -> None:
@@ -408,7 +452,9 @@ def _witch_food_submenu() -> None:
         if fi == 6:
             break
 
-        item_name, item_cost = _FOOD_PRICES[fi]
+        # item_name, item_cost = _FOOD_PRICES[fi]
+        item_name, base_cost = _FOOD_PRICES[fi]
+        item_cost = base_cost + state.diff("witch_food_price_bonus")
         if state.gold < item_cost:
             print(f"Witch Doctor: You cannot afford even a {item_name}? The spirits weep.")
             continue
@@ -454,7 +500,13 @@ def _witch_ancient_ritual() -> None:
 
 
 def _witch_healing(option_key: int) -> None:
-    hp_restore, cost, remedy_name = _HEALING[option_key]
+    hp_amounts  = state.diff("witch_hp_restore")   # tuple of 3
+    hp_restore  = hp_amounts[option_key - 1]
+    _HEALING_COSTS = {1: 50, 2: 90, 3: 150}
+    _HEALING_NAMES = {1: "Herbal Wrap", 2: "Bone Brew", 3: "Full Revival"}
+    cost        = _HEALING_COSTS[option_key]
+    remedy_name = _HEALING_NAMES[option_key]
+    # rest of function unchanged
 
     if state.gold < cost:
         print(f"Witch Doctor: {remedy_name} costs {cost} gold. You fall short, child.")
@@ -482,11 +534,6 @@ def _witch_healing(option_key: int) -> None:
 
 
 def visit_witch_doctor() -> None:
-    print("Travelling to the Witch Doctor...\n")
-    time.sleep(3)
-    state.increase_time(6)
-    state.drain_energy(ENERGY_TRAVEL_COST)
-    state.drain_hunger(HUNGER_DRAIN_TRAVEL)
 
     print(r"""
         .   *   .   *   .
@@ -513,7 +560,14 @@ def visit_witch_doctor() -> None:
         time.sleep(2)
         print(f"Witch Doctor: The forest told me you were coming, Hunter {state.name}.")
         time.sleep(2)
-        print("Witch Doctor: What do you seek?\n")
+        if state.points >= 300:
+            print("Witch Doctor: The Mouse King's shadow grows longer every day...")
+            time.sleep(1)
+            print("Witch Doctor: I've been healing hunters who crossed his minions.")
+            time.sleep(1)
+            print("Witch Doctor: Be careful out there, child. Very careful.\n")
+        else:
+            print("Witch Doctor: What do you seek?\n")
         time.sleep(1)
 
     while True:
@@ -563,7 +617,3 @@ def visit_witch_doctor() -> None:
             _witch_ancient_ritual()
         else:
             _witch_healing(choice)
-
-    print("\nReturning...\n")
-    time.sleep(3)
-    state.increase_time(6)

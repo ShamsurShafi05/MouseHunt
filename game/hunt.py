@@ -19,7 +19,7 @@ from models.mouse import Mouse
 from models.animal import Animal
 from art.ascii_art import (
     tiny_mouse, brown_mouse, white_mouse,
-    grey_mouse, field_mouse, poison_mouse,
+    grey_mouse, field_mouse, poison_mouse, mouse_king
 )
 
 
@@ -28,7 +28,7 @@ from art.ascii_art import (
 # ---------------------------------------------------------------------------
 
 # Order matches the probability tuple index:
-# (miss, Brown, Field, Grey, White, Tiny, Poison)
+# (miss, Brown, Field, Grey, White, Tiny, MouseKing)
 _PROB_TABLE = {
     "cheddar": (0.47, 0.10, 0.15, 0.10, 0.10, 0.05, 0.03),
     "marble":  (0.57, 0.05, 0.20, 0.05, 0.02, 0.08, 0.03),
@@ -43,7 +43,7 @@ _LOOT_TABLE = {
     "Grey":   (60,  50),
     "White":  (80,  70),
     "Tiny":   (100, 100),
-    "Poison": (0,   150),
+    "MouseKing":   (0,   200),   # renamed + boosted XP for the win
 }
 
 _COAT_TABLE = {
@@ -52,16 +52,15 @@ _COAT_TABLE = {
     "White":  white_mouse,
     "Grey":   grey_mouse,
     "Field":  field_mouse,
-    "Poison": poison_mouse,
+    "MouseKing": mouse_king,    # new art function (see ascii_art.py change)
 }
 
 _XP_ALLOWED = {
     "tier0": [None, "Field"],
     "tier1": [None, "Field", "Grey", "White", "Brown"],
-    "tier2": [None, "Field", "Grey", "White", "Brown", "Tiny"],   # Poison still locked
-    "tier3": [None, "Field", "Grey", "White", "Brown", "Tiny", "Poison"],
+    "tier2": [None, "Field", "Grey", "White", "Brown", "Tiny"],   # MouseKing still locked
+    "tier3": [None, "Field", "Grey", "White", "Brown", "Tiny", "MouseKing"],
 }
-
 
 def generate_probabilities(cheese_type: str, enchant: bool = False) -> tuple:
     key = cheese_type.lower()
@@ -77,7 +76,7 @@ def generate_mouse(cheese: str, enchant: bool, points: int) -> str | None:
         num = random.random()
 
         cumulative = 1.0
-        cumulative -= p[6]; spawn = "Poison" if num >= cumulative else None
+        cumulative -= p[6]; spawn = "MouseKing" if num >= cumulative else None
         cumulative -= p[5]; spawn = "Tiny"   if num >= cumulative and spawn is None else spawn
         cumulative -= p[4]; spawn = "White"  if num >= cumulative and spawn is None else spawn
         cumulative -= p[3]; spawn = "Grey"   if num >= cumulative and spawn is None else spawn
@@ -110,7 +109,13 @@ def generate_coat(mouse_type: str | None) -> str:
 
 
 def spawn_mouse(cheese: str, enchant: bool, points: int) -> Mouse:
-    """Full pipeline: roll → loot → coat → Mouse instance."""
+    """Full pipeline: roll → difficulty miss → loot → coat → Mouse instance."""
+    # Difficulty: Survivalist has an extra miss chance on top of cheese probability
+    miss_bonus = state.diff("hunt_miss_bonus")
+    if miss_bonus > 0 and random.random() < miss_bonus:
+        # Force a miss regardless of cheese
+        return Mouse(None, 0, 1, "")
+
     name        = generate_mouse(cheese, enchant, points)
     gold, pts   = loot_lut(name)
     coat        = generate_coat(name)
@@ -171,7 +176,7 @@ def _level_check_3() -> None:
     print("=========================================================")
     print("Congrats you have unlocked new content:\n")
     print("WARNING: Something has changed in these lands...")
-    print("Rumour has it a deadly Poison Mouse has been spotted nearby.")
+    print("Rumour has it a deadly MouseKing has been spotted nearby.")
     print("Keep your crate close — and your wits closer.")
     print("=========================================================")
 
@@ -210,23 +215,53 @@ def _decrement_trap(trap_name: str) -> None:
 # Hunt outcome handlers
 # ---------------------------------------------------------------------------
 
-def _handle_poison_mouse(mouse: Mouse) -> None:
-    print("``````````````````````````````````````````")
-    print("You caught a Poison Mouse!")
+def _handle_mouse_king(mouse: Mouse) -> bool:
+    """
+    Attempt to catch the Mouse King.
+    Returns True if caught (win condition), False if failed (crate wiped).
+    Swiss cheese + Multilayer Glued-Board Trap are BOTH required.
+    """
+    has_swiss     = state.trap_cheese is not None and state.trap_cheese.lower() == "swiss"
+    has_multilayer = state.current_trap == "Multilayer Glued-Board Trap"
+
+    print("\n``````````````````````````````````````````")
+    print("         *** THE MOUSE KING APPEARS ***")
     print(mouse.get_coat())
-    print("``````````````````````````````````````````")
-    state.points += mouse.get_points()
-    state.attempts["Successful hunt"] += 1
-    state.caught_mouse_dictionary["Poison"] = (
-        state.caught_mouse_dictionary.get("Poison", 0) + 1
-    )
-    print(f"You earned {mouse.get_points()} XP!")
-    time.sleep(1)
-    if state.crate is not None and state.crate.size() > 0:
-        state.crate.poison_wipe()
+    print("``````````````````````````````````````````\n")
+    time.sleep(2)
+
+    if has_swiss and has_multilayer:
+        print("Your Swiss cheese lured him in...")
+        time.sleep(1)
+        print("Your Multilayer Glued-Board Trap snaps SHUT!")
+        time.sleep(1)
+        print("\n*** YOU HAVE CAUGHT THE MOUSE KING! ***\n")
+        state.points += mouse.get_points()
+        state.attempts["Successful hunt"] += 1
+        state.caught_mouse_dictionary["MouseKing"] = (
+            state.caught_mouse_dictionary.get("MouseKing", 0) + 1
+        )
+        state.mouse_king_caught = True
+        return True
     else:
-        print("Lucky — your crate was empty. Nothing lost.\n")
-    state.increase_time(3)
+        missing = []
+        if not has_swiss:
+            missing.append("Swiss cheese")
+        if not has_multilayer:
+            missing.append("Multilayer Glued-Board Trap")
+        print(f"The Mouse King sniffs the air... something is wrong.")
+        time.sleep(1)
+        print(f"You were missing: {', '.join(missing)}!")
+        time.sleep(1)
+        print("He ESCAPES — and poisons your crate on the way out!\n")
+        time.sleep(1)
+        state.attempts["Unsuccessful hunt"] += 1
+        if state.crate is not None and state.crate.size() > 0:
+            state.crate.poison_wipe()
+        else:
+            print("Lucky — your crate was empty. Nothing lost.\n")
+        state.increase_time(3)
+        return False
 
 
 def _handle_caught_mouse(mouse: Mouse) -> None:
@@ -300,9 +335,9 @@ def hunt() -> None:
             print("ProTip: The elders say it's best to avoid what lurks in the shadows of these unknown realms once dusk falls.")
             if input("Do you want to still continue to hunt? ['yes' or 'no'] ").lower() == "no":
                 break
-            risk1, risk2 = 0.5, 0.6
+            risk1, risk2 = state.diff("animal_risk_night")
         else:
-            risk1, risk2 = 0.1, 0.2
+            risk1, risk2 = state.diff("animal_risk_day")
 
         # Guard: no trap selected
         if state.current_trap is None:
@@ -373,9 +408,11 @@ def hunt() -> None:
         # Spawn and resolve mouse
         mouse = spawn_mouse(state.trap_cheese, state.enchant, state.points)
 
-        if mouse.name == "Poison":
-            _handle_poison_mouse(mouse)
+        if mouse.name == "MouseKing":
+            caught = _handle_mouse_king(mouse)
             miss_streak = 0
+            if caught:
+                return   # signals win — _game_loop checks state.mouse_king_caught
         elif mouse.name is not None:
             _handle_caught_mouse(mouse)
             miss_streak = 0

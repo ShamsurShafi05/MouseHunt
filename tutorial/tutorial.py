@@ -123,6 +123,9 @@ def run_tutorial() -> None:
         if not _travel_to_camp():
             break
 
+        trap_result = None
+        horn_result = None
+        again = ""
         while True:
             trap_result = _setup_trap()
             if trap_result is False:
