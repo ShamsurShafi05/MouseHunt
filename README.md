@@ -141,7 +141,3 @@ The game progression follows three XP tiers:
 | Game Design & Programming | Shamsur Shafi |
 | Mice ASCII Art | ChatGPT |
 | NPC Dialogue & Story | Claude (Anthropic) |
-
----
-
-*"The Mouse King wasn't the only thing in these lands..."*
